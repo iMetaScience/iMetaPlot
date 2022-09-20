@@ -1,0 +1,205 @@
+---
+title: "跟着iMeta学做图｜ComplexHeatmap绘制多样的热图"
+author: "顾祖光(Zuguang Gu)"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    theme: cerulean
+    highlight: haddock
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    code_fold: show
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = T, echo=T, comment="#>", message=F, warning=F,
+	fig.align="center", fig.width=5, fig.height=3, dpi=150)
+```
+
+如果你使用本代码，请引用：
+Zuguang Gu. 2022. Complex heatmap visualization. iMeta 1: e43. https://doi.org/10.1002/imt2.43
+
+
+**翻译及注释：农心生信工作室**<br />
+
+热图（Heatmap）是矩阵类型数据最为常用的可视化方法，在生物学领域常用于各种组学数据的可视化，例如基因表达量数据、物种丰度分布、表观遗传信号数据等。现如今多组学数据不断涌现， 现有的R语言包例如 _gplots_、_pheatmap_、_ggplot2_绘制热图的功能较为单一，已无法满足大家从多个维度、对多类型数据更加充分可视化的需求。_**ComplexHeatmap**_ 由德国国家肿瘤疾病中心顾顾祖光博士开发，该R包正如其名一样复杂，但是其绘制热图功能却堪称全面，下面我们将以顾祖光博士发表在iMeta上的方法论文[Complex heatmap visualization](https://onlinelibrary.wiley.com/doi/epdf/10.1002/imt2.43)
+
+- [iMeta | 德国国家肿瘤中心顾祖光发表复杂热图(ComplexHeatmap)可视化方法](https://mp.weixin.qq.com/s/ncvGZ_ucxGPQZ84XkRiFuw)
+
+本文对其中的Figure 2图A为例，对_**ComplexHeatmap**_的热图绘制方法进行讲解和探讨，先上原图：<br />
+![image.png](https://cdn.nlark.com/yuque/0/2022/png/21952320/1663566963905-a7f84748-e864-483a-a0d1-1ea78f92c47a.png#clientId=uf5b1d964-2815-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=484&id=u23740536&margin=%5Bobject%20Object%5D&name=image.png&originHeight=968&originWidth=925&originalType=binary&ratio=1&rotation=0&showTitle=false&size=110699&status=done&style=none&taskId=ue9576dbb-dfd8-4e5f-94e6-76dd20a449c&title=&width=462.5)<br />该热图原始数据是18 * 24的矩阵，行注释为堆叠柱状图、列注释为点图，行列分别进行了层次聚类。
+
+代码、数据和结果下载，请访问 https://github.com/iMetaScience/iMetaPlot ，220919ComplexHeatmap 目录
+
+### R包检测和安装
+
+1. 先安装所_**ComplexHeatmap**_包及其依赖并将所有包载入
+
+```{r}
+# 检查开发者工具devtools，如没有则安装
+if (!require("devtools"))
+  install.packages("devtools")
+# 加载开发者工具devtools
+library(devtools)
+# 检查热图包，没有则通过github安装最新版
+if (!require("ComplexHeatmap"))
+  install_github("jokergoo/ComplexHeatmap")
+# ComplexHeatmap依赖关系
+if (!require("circlize"))
+  install_github("jokergoo/circlize")
+# 用于绘制矩阵列方向上的层次聚类结果
+if (!require("dendextend"))
+  install.packages('dendextend') 
+# 加载包
+library(ComplexHeatmap)
+library(circlize)
+library(dendextend)
+```
+
+### 生成测试数据
+
+2. 设置随机种子并生成18 * 24的随机数据**mat**
+
+```{r}
+# 设置随机数种子，确保数据可重复
+set.seed(123)
+# 分小组，用于形成不同聚类簇
+nr1 = 4; nr2 = 8; nr3 = 6; nr = nr1 + nr2 + nr3
+nc1 = 6; nc2 = 8; nc3 = 10; nc = nc1 + nc2 + nc3
+mat = cbind(rbind(matrix(rnorm(nr1*nc1, mean = 1,   sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc1, mean = 0,   sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc1, mean = 0,   sd = 0.5), nr = nr3)),
+            rbind(matrix(rnorm(nr1*nc2, mean = 0,   sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc2, mean = 1,   sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc2, mean = 0,   sd = 0.5), nr = nr3)),
+            rbind(matrix(rnorm(nr1*nc3, mean = 0.5, sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc3, mean = 0.5, sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc3, mean = 1,   sd = 0.5), nr = nr3))
+)
+dim(mat) #查看数据维度
+
+# 可选从文件读取矩阵
+# write.table(mat, file="mat.txt", sep="\t", quote=F, row.names=T, col.names=T)
+# mat = as.matrix(read.table(("mat.txt"), header=T, row.names=1, sep="\t", comment.char=""))
+
+mat = mat[sample(nr, nr), sample(nc, nc)] # 打乱数据
+rownames(mat) = paste0("row", seq_len(nr)) # 行命名
+colnames(mat) = paste0("column", seq_len(nc)) # 列命名
+```
+
+### 热图预览
+
+3. 开始用**_ComplexHeatmap_**中最重要的函数**Heatmap()**绘制一张简单的热图，可以看到，默认参数下，**_ComplexHeatmap_**会生成图例、行列名并对行列分别聚类，聚类方法和刚才我们用dendextend做聚类时的'complete'层次聚类方法相同
+```{r}
+Heatmap(mat)
+```
+![image.png](https://cdn.nlark.com/yuque/0/2022/png/21952320/1663573707817-2d5016e3-5a5d-46ca-bced-02ff17378a58.png#clientId=uf5b1d964-2815-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=536&id=u236de907&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1298&originWidth=1090&originalType=binary&ratio=1&rotation=0&showTitle=false&size=582361&status=done&style=none&taskId=uf63fe5f1-e826-4d4d-ac06-d7a34b625a9&title=&width=450)
+
+
+### 热图聚类着色
+
+4. 对列数据做层次聚类，**hclust()**函数做聚类时默认方法为'complete'即使用样本最大距离定义两个类之间的距离，采用欧式距离作为距离的度量，**color_branches()**用于给不同分支着色
+```{r}
+# 层次聚类
+column_dend = as.dendrogram(hclust(dist(t(mat))))
+# 分支着色
+column_dend = color_branches(column_dend, k = 3)
+```
+
+5. 尝试一些参数的设置，由于**_ComplexHeatmap_**基于**grid**绘图框架，所以凡是量化长度的参数都需要用**unit()**函数制定，例如下面的**row_dend_width**。**cluster_columns**和**cluster_rows**参数可以指定聚类方法为我们前面设置好的**dendrogram**对象
+```{r}
+Heatmap(mat, name = "mat", 
+        row_dend_width = unit(2, "cm"), # 行聚类树的宽度
+        cluster_columns = column_dend, # 列聚类方法指定为前面设置的dendrogram对象
+        column_title = "(A) A heatmap with various annotations", # 标题
+        show_column_names = FALSE, # 不显示列名
+        row_split = rep(c("A", "B"), 9), # 行分割后的命名
+        row_km = 2, # 行k-means聚类的类别数
+        column_split = 3  # 列分割数
+        )
+```
+![image.png](https://cdn.nlark.com/yuque/0/2022/png/21952320/1663575306416-ac363879-db7c-4e8e-bf0f-b002812d51e9.png#clientId=uf5b1d964-2815-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=588&id=u4d87ac1a&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1306&originWidth=1090&originalType=binary&ratio=1&rotation=0&showTitle=false&size=602254&status=done&style=none&taskId=ub14726a9-5d96-4159-82d6-be7d13a8057&title=&width=491)<br />这里需要注意的是**row_km**参数，官方的解释如下：
+> Apply k-means clustering on rows. If the value is larger than 1, the heatmap will be split by rows according to the k-means clustering. For each row slice, hierarchical clustering is still applied with parameters above.
+
+这就是说这个参数一旦指定一个大于1的数，就会先进行一个k-means聚类，然后在k个类别内用默认的层次聚类方法进行第二次聚类，同时，热图的行也会根据聚类结果切割开来
+
+### 热图注释
+
+6. 最后，再把行和列的annotation加上，**anno_points()用于**在矩阵上方绘制点图，数值为0-1之间的随机数；**anno_barplot()用于**在矩阵右边绘制堆叠柱状图，图中颜色属性用**grid**框架中的**gpar()**函数控制
+
+```{r}
+(ht = Heatmap(mat, name = "mat", 
+        row_dend_width = unit(2, "cm"), # 行聚类树的宽度
+        cluster_columns = column_dend, # 列聚类方法指定为前面设置的dendrogram对象
+        column_title = "(A) A heatmap with various annotations", # 标题
+        show_column_names = FALSE, # 不显示列名
+        row_split = rep(c("A", "B"), 9), # 行分割后的命名
+        row_km = 2, # 行k-means聚类的类别数
+        column_split = 3,  # 列分割数
+        top_annotation = HeatmapAnnotation(foo1 = 1:24, 
+                                           bar1 = anno_points(runif(24))),
+        right_annotation = rowAnnotation(foo2 = 18:1,
+                                         bar2 = anno_barplot(cbind(runif(18), 
+                                                                   runif(18)),
+                                                        gp = gpar(fill = 2:3), 
+                                                        width = unit(2, "cm")))
+        ))
+# 保存图为PDF，指定宽和高
+pdf("Figure2A.pdf", width = 8, height = 4.5)
+print(ht)
+dev.off()
+```
+![image.png](https://cdn.nlark.com/yuque/0/2022/png/21952320/1663576273686-db899823-5d03-44bf-9c53-3282368d52c7.png#clientId=uf5b1d964-2815-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=656&id=ua94e604d&margin=%5Bobject%20Object%5D&name=image.png&originHeight=1312&originWidth=1094&originalType=binary&ratio=1&rotation=0&showTitle=false&size=563450&status=done&style=none&taskId=u5c5a50be-eeb2-4c7d-bbdf-e2b53f57686&title=&width=547)<br />
+
+### 附.完整代码
+
+```{r}
+library(ComplexHeatmap)
+library(circlize)
+library(dendextend)
+
+set.seed(123)
+nr1 = 4; nr2 = 8; nr3 = 6; nr = nr1 + nr2 + nr3
+nc1 = 6; nc2 = 8; nc3 = 10; nc = nc1 + nc2 + nc3
+mat = cbind(rbind(matrix(rnorm(nr1*nc1, mean = 1,   sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc1, mean = 0,   sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc1, mean = 0,   sd = 0.5), nr = nr3)),
+            rbind(matrix(rnorm(nr1*nc2, mean = 0,   sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc2, mean = 1,   sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc2, mean = 0,   sd = 0.5), nr = nr3)),
+            rbind(matrix(rnorm(nr1*nc3, mean = 0.5, sd = 0.5), nr = nr1),
+                  matrix(rnorm(nr2*nc3, mean = 0.5, sd = 0.5), nr = nr2),
+                  matrix(rnorm(nr3*nc3, mean = 1,   sd = 0.5), nr = nr3))
+)
+
+mat = mat[sample(nr, nr), sample(nc, nc)] # random shuffle rows and columns
+rownames(mat) = paste0("row", seq_len(nr))
+colnames(mat) = paste0("column", seq_len(nc))
+
+column_dend = as.dendrogram(hclust(dist(t(mat))))
+column_dend = color_branches(column_dend, k = 3) # `color_branches()` returns a dendrogram object
+
+Heatmap(mat, name = "mat", 
+        row_dend_width = unit(2, "cm"), # 行聚类树的宽度
+        cluster_columns = column_dend, # 列聚类方法指定为前面设置的dendrogram对象
+        column_title = "(A) A heatmap with various annotations", # 标题
+        show_column_names = FALSE, # 不显示列名
+        row_split = rep(c("A", "B"), 9), # 行分割后的命名
+        row_km = 2, # 行k-means聚类的类别数
+        column_split = 3,  # 列分割数
+        top_annotation = HeatmapAnnotation(foo1 = 1:24, 
+                                           bar1 = anno_points(runif(24))),
+        right_annotation = rowAnnotation(foo2 = 18:1,
+                                         bar2 = anno_barplot(cbind(runif(18), 
+                                                                   runif(18)),
+                                                        gp = gpar(fill = 2:3), 
+                                                        width = unit(2, "cm")))
+        )
+```
+
+以上代码来自Zuguang Gu博士的github[https://github.com/jokergoo/ComplexHeatmap_v2_paper_code](https://github.com/jokergoo/ComplexHeatmap_v2_paper_code)，论文中其他的图都有相应的代码实现，大家可以参考学习，绘制出更加漂亮的热图！
