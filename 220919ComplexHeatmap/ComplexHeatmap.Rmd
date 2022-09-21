@@ -83,7 +83,7 @@ mat = cbind(rbind(matrix(rnorm(nr1*nc1, mean = 1,   sd = 0.5), nr = nr1),
 )
 dim(mat) #查看数据维度
 
-# 可选从文件读取矩阵
+# 可选 从文件读取矩阵
 # write.table(mat, file="mat.txt", sep="\t", quote=F, row.names=T, col.names=T)
 # mat = as.matrix(read.table(("mat.txt"), header=T, row.names=1, sep="\t", comment.char=""))
 
