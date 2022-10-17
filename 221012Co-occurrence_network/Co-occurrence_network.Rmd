@@ -123,9 +123,9 @@ E(igraph)$width <-  abs(E(igraph)$cor)*0.5 # 边的粗细与相关系数成正�
 ```{r}
 coords <- layout_with_fr(igraph, niter=9999,grid="nogrid") # 生成布局
 
-pdf("Figure1C.pdf", height = 10, width = 10) # 保存图为PDF，指定宽和高
+# pdf("Figure1C.pdf", height = 10, width = 10) # 保存图为PDF，指定宽和高
 plot(igraph, layout=coords, vertex.label = NA, vertex.frame.color=NA) # 画图
-dev.off()
+# dev.off()
 ```
 
 <br />![image2.png](screenshot/final.png)<br />
