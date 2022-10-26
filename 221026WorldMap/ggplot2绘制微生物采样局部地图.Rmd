@@ -1,0 +1,119 @@
+---
+title: "跟着iMeta学做图｜绘制微生物采样局部地图"
+author: "Yaqin Guo"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+    theme: cerulean
+    highlight: haddock
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+    code_fold: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = T, echo=T, comment="#>", message=F, warning=F,
+	fig.align="center", fig.width=5, fig.height=3, dpi=150)
+```
+如果你使用本代码，请引用：
+Yaqin Guo. 2022. Genetic diversity and community composition of arbuscular mycorrhizal fungi associated with root and rhizosphere soil of the pioneer plant _Pueraria phaseoloides_. iMeta 1: e51. https://onlinelibrary.wiley.com/doi/full/10.1002/imt2.51
+
+**代码注释：农心生信工作室**<br />
+
+生态学中样品的采样地点常遍布世界各地，论文中放一张精确标注采样地点的局部地图可以给读者留下深刻印象。本期我们挑选刊登在**iMeta**上的[Genetic diversity and community composition of arbuscular mycorrhizal fungi associated with root and rhizosphere soil of the pioneer plant _Pueraria phaseoloides_](https://onlinelibrary.wiley.com/doi/full/10.1002/imt2.51)论文中的地图进行代码注释。
+接下来，我们将通过详尽的代码逐步拆解原图，最终实现对原图的复现。
+### R包检测和安装
+1. 安装并载入所有R包
+```{r}
+if (!require("cowplot"))
+  install.packages('cowplot') 
+if (!require("googleway"))
+  install.packages('googleway') 
+if (!require("ggplot2"))
+  install.packages('ggplot2')
+if (!require("ggrepel"))
+  install.packages('ggrepel')
+if (!require("ggspatial"))
+  install.packages('ggspatial')
+if (!require("libwgeom"))
+  install.packages('libwgeom')
+if (!require("sf"))
+  install.packages('sf')
+if (!require("rnaturalearth"))
+  install.packages('rnaturalearth')
+if (!require("rnaturalearthdata"))
+  install.packages('rnaturalearthdata')
+# 加载包
+library("ggplot2")
+theme_set(theme_bw())  # 规定背景
+library("sf")   #加载操作矢量数据空间的包           
+library("rnaturalearth") # 加载绘制地图的包
+library("rnaturalearthdata") # 加载绘制地图的数据
+library("ggspatial") # 加载绘制地图辅助工具 
+```
+### 世界地图预览
+2. 先展示一个粗略的世界地图
+```{r}
+world <- ne_countries(scale = "medium", returnclass = "sf") # 生成地图类
+class(world)
+ggplot(data = world) + geom_sf() # 绘制地图
+```
+3. 给世界地图加上一些元素
+```{r}
+ggplot(data = world) + geom_sf() +
+  xlab("Longitude") + ylab("Latitude") + #横纵轴名称
+  ggtitle("World map", subtitle = paste0("(", length(unique(world$NAME)), " countries)")) # 地图标题
+```
+4. 根据经纬度局部缩放
+```{r}
+ggplot(data = world) + geom_sf() + coord_sf(xlim = c(-102.15, -74.12), ylim = c(7.65, 33.97), expand = FALSE)
+```
+### 采样地局部地图绘制
+5. 该论文中用到的根际土壤的采样地点是**加纳**的几个城市附近，先绘制加纳地图
+```{r}
+ghana <- subset(world, admin == "Ghana") # 从世界地图中取出加纳地图板块
+ggplot(data = ghana) + geom_sf()  # ggspatial包会自动标出经纬度
+```
+6. 给上图加上比例尺和指北箭头
+```{r}
+ggplot(data = ghana) + geom_sf() +
+    # 绘制参考比例尺
+    annotation_scale(location = "br", width_hint = 0.5) +
+    # 绘制指北箭头
+    annotation_north_arrow(location = "br", which_north = "true",
+                           pad_x = unit(0.2, "in"), pad_y = unit(0.3, "in"),
+                           style = north_arrow_fancy_orienteering)
+```
+7. 在图中标出加纳和各采样城市的位置
+```{r}
+ggplot(data = ghana) + geom_sf() +
+    # 绘制参考比例尺
+    annotation_scale(location = "br", width_hint = 0.5) +
+    # 绘制指北箭头
+    annotation_north_arrow(location = "br", which_north = "true",
+                           pad_x = unit(0.2, "in"), pad_y = unit(0.3, "in"),
+                           style = north_arrow_fancy_orienteering) +
+    annotate(geom = "text",x=250000,y=500000,label="GHANA",fontface="italic",size=6)+
+    annotate(geom = "text",x=270000,y=280000,label="Kumasi",fontface="italic",size=4)+
+    annotate(geom = "point",x=270000,y=300000,shape=17,size=4)+
+    annotate(geom = "point",x=220000,y=310000,shape=15,color="red",size=3)+
+    annotate(geom = "point",x=320000,y=255000,shape=15,color="blue",size=3)+
+    annotate(geom = "text",x=220000,y=330000,label="Bosome-Freho",fontface="italic",size=2)+
+    annotate(geom = "text",x=320000,y=240000,label="Konongo",fontface="italic",size=2)+
+    labs(x="Longitude",y="Latitude")+
+    # 根据经纬度进行局部放缩
+    coord_sf(crs = st_crs(25000), 
+               xlim = c(0, 500000), 
+               ylim = c(0, 730000))
+
+```
+8. 上图显得有些拥挤，调整宽和高保存图片使图片不再拥挤
+```{r}
+ggsave("Ghana_Map.tiff",width = 8,height = 6)
+```
+以上代码来自Yaqin Guo的git仓库https://github.com/yaqinguo/AMF-communities-of-the-pioneer-plant-Pueraria-phaseoloides
