@@ -62,6 +62,8 @@ library("ggspatial") # 加载绘制地图辅助工具
 world <- ne_countries(scale = "medium", returnclass = "sf") # 生成地图类
 class(world)
 ggplot(data = world) + geom_sf() # 绘制地图
+china <- subset(world, admin == "China") 
+ggplot(data = china) + geom_sf()
 ```
 3. 给世界地图加上一些元素
 ```{r}
