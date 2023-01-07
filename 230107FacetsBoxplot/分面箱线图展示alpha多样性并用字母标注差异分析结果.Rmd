@@ -68,29 +68,25 @@ shannon<-diversity(dune,index='shannon',base = exp(1))
 #计算均匀度Pielou evenness，即香农指数与ln(Richness)的比值
 pielo<-shannon/log(richness,base = exp(1))
 ```
-
 4. 创建函数一步计算alpha多样性。
 ```{r}
 calculate_alpha<-function(otu){
   data_richness <- rowSums(otu>0)
   data_shannon<-diversity(otu,index='shannon',base = exp(1))
-  data_pielou<-data_shannon/log(data_shannon,base = exp(1))
+  data_pielou<-data_shannon/log(data_richness,base = exp(1))
   alpha_matrix<-cbind(data_pielou,data_richness,data_shannon)
   alpha_df<-as.data.frame(alpha_matrix)
   return(alpha_df)
 }
 ```
-
-### 绘图预览
-
-4. 利用函数calculate_alpha()，创建绘图所需数据框并重命名其中的列：
+5. 利用函数calculate_alpha()，创建绘图所需数据框并重命名其中的列：
 ```{r}
 plot_df<-calculate_alpha(dune)%>%
   cbind(dune.env$Management)%>%
   rename_with(~"Group",4)
 ```
 
-5. 接下来，逐一预览不同alpha多样性的箱线图：
+6. 接下来，逐一预览不同alpha多样性的箱线图：
 ```{r}
 #绘制Pielou evenness的箱线图
 p_pielou<-ggplot(plot_df,aes(Group,data_pielou))+
@@ -113,7 +109,7 @@ p_shannon<-ggplot(plot_df,aes(Group,data_shannon))+
 ```
 ![](./image4.png)
 
-6. 现在，需要绘制分面箱线图，以在同一张图片中表示三种不同的alpha多样性，为此，我们需要将plot_df的**宽表**转化为**长表**：
+7. 现在，需要绘制分面箱线图，以在同一张图片中表示三种不同的alpha多样性，为此，我们需要将plot_df的**宽表**转化为**长表**：
 ```{r}
 #宽表转化为长表
 df_long<-pivot_longer(plot_df,cols = -Group,names_to = "type",values_to = "alpha_index")
@@ -275,7 +271,6 @@ shannon<-diversity(dune,index='shannon',base = exp(1))
 #计算均匀度Pielou evenness，即香农指数与ln(Richness)的比值
 pielo<-shannon/log(richness,base = exp(1))
 
-
 #创建函数一步计算alpha多样性
 calculate_alpha<-function(otu){
   data_richness <- rowSums(otu>0)
@@ -285,7 +280,6 @@ calculate_alpha<-function(otu){
   alpha_df<-as.data.frame(alpha_matrix)
   return(alpha_df)
 }
-
 plot_df<-calculate_alpha(dune)%>%
   cbind(dune.env$Management)%>%
   rename_with(~"Group",4)
