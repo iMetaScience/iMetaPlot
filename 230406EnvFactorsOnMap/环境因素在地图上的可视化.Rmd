@@ -56,7 +56,6 @@ if (!require("devtools"))
   install.packages("devtools")
 #加载开发者工具devtools
 library(devtools)
-#检查linkET包，没有则通过github安装最新版
 if(!require("geoviz"))
   install_github("neilcharles/geoviz", force = TRUE)
   library(geoviz)
@@ -66,7 +65,6 @@ if (!require("devtools"))
   install.packages("devtools")
 #加载开发者工具devtools
 library(devtools)
-#检查linkET包，没有则通过github安装最新版
 if(!require("sf"))
   install_github("r-spatial/sf", force = TRUE)
   library(sf)
@@ -76,7 +74,6 @@ if (!require("devtools"))
   install.packages("devtools")
 #加载开发者工具devtools
 library(devtools)
-#检查linkET包，没有则通过github安装最新版
 if(!require("terra"))
   install_github("rspatial/terra", force = TRUE)
   library(terra)
@@ -119,12 +116,10 @@ p1a_3<-p1a_2+
     theme_bw()+ #预设主题
     theme(panel.grid.major = element_blank(),#去除主题自带的主要网格线
         panel.grid.minor = element_blank(),#去除主题自带的次要网格线
-        panel.background = element_blank(), #去除主题本身设置的背景
         legend.title = element_blank(),
-        plot.background = element_rect(fill="#CADEF0", color="gray71",size = 0.5), #对图形背景色调整
+        panel.background = element_rect(fill="#CADEF0", color="gray71",size = 0.5), #对图形背景色调整
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         legend.position = c(0.9, 0.3),#图例位置设置
-        legend.background = element_rect(fill = F),
         legend.key.size = unit(12, "pt"))#图例刻度设置
 p1a_3 
 ``` 
@@ -181,7 +176,6 @@ p1a <-ggplot()+
         plot.background = element_rect(fill="#CADEF0", color="gray71",size = 0.5), #图形背景色调整
         axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
         legend.position = c(0.9, 0.3),
-        legend.background = element_rect(fill = F),
         legend.key.size = unit(12, "pt"))+
   #添加指北针
   annotation_north_arrow(location="tl",#调整指北针位置，

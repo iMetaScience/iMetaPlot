@@ -78,6 +78,7 @@ p1e1<-p1e+
   theme_minimal() + #预设主题
   theme(axis.text.x = element_blank(), #因预期x轴另外加一条渐变的图形表示，在这里取消x轴
         panel.grid.minor = element_blank(), #移除图中的网格
+        panel.grid.major = element_blank(),
         panel.spacing.x = element_blank())+
   xlab("Salinity")+ #设置x轴标题
   ylab("Relative abundance (%)")#设置Y轴标题
@@ -103,6 +104,15 @@ d1e0 <- read.csv("ProClass.csv")
 d1e = as.data.frame(melt(d1e0, id.vars=c("phylumpro")))#id.vars=c()用于指定要保留的字段
 head(d1e)#列出前几行看看数据转化后长什么样
 
+#预设渐变色
+taxcol <- c("#64A4CC", "#9CCEE3", "#C7E5DB", "#ECF6C8", "#FEEDAA", "#FDC980", "#F89D59","#E75B3A", "#D7191C")
+
+
+p1e<-ggplot(data=d1e,aes(x=variable, y=value, alluvium=phylumpro))+ #alluvium=设置冲积层，在这里将菌(phylumpro)设置冲积层
+  geom_alluvium(aes(fill = phylumpro), alpha = 1)+ #画桑吉图，按菌(phylumpro)进行颜色填充
+  scale_fill_manual(values = taxcol) #对冲积层填充颜色
+
+p1e  
 #接下了需要对整体进行细节美化
 p1e1<-p1e+ 
   theme_minimal() + #预设主题
